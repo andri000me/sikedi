@@ -1,0 +1,517 @@
+<div class="row-fluid">
+<div class="span12">
+<div class="page-header">
+	<h1>DATA PERBAIKAN</h1>
+</div>
+<?php
+$kd    = $_SESSION['dpkode'];
+$uname = $_SESSION['dpNama'];
+$uid   = $_SESSION['dpId'];
+$ulevel= $_SESSION['dpLevel'];
+error_reporting(E_ALL ^ (E_NOTICE | E_WARNING));
+$ntgls = date("dmy");
+$tgls = date("d-m-Y");
+$page = $_GET['page'];
+if($_GET['act']=="tambah"){
+	$tid = "R.".getANum("pTiket","perbaikan","1",2);
+	//echo $tid."<br>".$gn;
+?>
+<div class="widget-box">
+<div class="widget-header widget-header-flat"><h2 class="smaller">Buka Tiket</h2></div>
+<div class="widget-body">
+<div class="widget-main">
+	<!-- FORM -->
+	<form method="POST" enctype="multipart/form-data" class="form-horizontal">
+		<div class="control-group">
+			<label class="control-label" for="pTiket">ID Tiket</label>
+			<div class="controls">
+				<input type="text" class="input-medium" id="pTiket" name="pTiket" value="<?php echo $tid;?>" readonly required>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for="pTgl">Tanggal</label>
+			<div class="controls">
+				<div class="row-fluid input-append">
+					<input class="span2 date-picker" id="pTgl" name="pTgl" type="text" data-date-format="yyyy-mm-dd" value="<?php echo $e['pTgl'];?>" required/>
+					<span class="add-on"><i class="icon-calendar"></i></span>
+				</div>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for="pInv">Inventaris</label>
+			<div class="controls">
+				<select class="span5 chosen-select" name="pInv" id="pInv" placeholder="Pilih Inventaris">
+					<?php
+						$qsp = mysql_query("SELECT * FROM barang WHERE bpemegang='$uid'");
+						while ($s=mysql_fetch_array($qsp)) {
+							$kat = getValue("kNama","ms_kategori","kId='$s[bjenis]'");
+	      					$merek = getValue("merek","ms_merek","rMerek='$s[bmerek]'");
+	      					$tipe = getValue("tipe","ms_tipe","rTipe='$s[btipe]'");
+	      					$kon = getValue("nama","_kondisi","id='$s[bkondisi]'");
+	      					$asal = getValue("jNama","_jpengadaan","jId='$s[basal]'");
+
+							if ($e['pInv']==$s['bkode']){
+								echo "<option value='$s[bkode]' selected>$s[bkode] - $kat - $merek - $tipe - sn: $s[bserial]</option>";
+							}else{
+								echo "<option value='$s[bkode]'>$s[bkode] - $kat - $merek - $tipe - sn: $s[bserial]</option>";
+							}
+						}
+					?>
+				</select>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for="pPJ">Penanggung Jawab</label>
+			<div class="controls">
+				<input class="input-xlarge" type="text" id="pPJ" name="pPJ" value="<?php echo "$uname";?>"  readonly required>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for="pKerusakan">Kerusakan</label>
+			<div class="controls">
+				<textarea class="ckeditor" name="pKerusakan" id="pKerusakan" rows="8"><?php echo $e['pKerusakan'];?></textarea>
+			</div>
+		</div>
+		<div class="form-actions">
+			<button class="btn btn-info" type="submit" name="simpan">
+				<i class="icon-save bigger-110"></i>Simpan
+			</button>
+			<a class="btn" href="media.php?page=<?php echo $page;?>">
+				<i class="icon-undo bigger-110"></i>Batal
+			</a>
+		</div>
+	</form>
+	<!-- FORM -->
+	<?php
+		if (isset($_POST['simpan'])){
+		$uname = $_SESSION['dpNama'];	
+			$q1 = mysql_query("INSERT INTO perbaikan (kdkab,pTiket,pInv,pTgl,pKerusakan,user,pPJ)
+	      											VALUES('$kd','$_POST[pTiket]','$_POST[pInv]','$_POST[pTgl]',
+	      													 '$_POST[pKerusakan]','$uid','$_POST[pPJ]')");	
+
+			if ($q1){
+				$q2 = mysql_query("UPDATE barang SET bkondisi='1' WHERE bkode='$_POST[pInv]'");
+
+    			$milliseconds = round(microtime(true) * 1000);
+    			$pesan = "<div id='tipe'>simpantiket</div><div id='judul'>Permintaan Perbaikan Baru</div><div id='isi'>$_POST[pPJ]:\n$_POST[pKerusakan]</div><div id='time'>$milliseconds</div>";
+    		    
+    		    $tokennya = array();
+    		    
+    			$q3 = mysql_query("select token from token where level='0' and kdkab='$kd' ");
+    			while($hasil = mysql_fetch_array($q3)){
+        			$token = $hasil['token'];
+        			$tokennya[] = $token;
+                }
+        		send($tokennya, $pesan);
+        		
+			}
+
+	      
+			if ($q2){
+			echo "<script>
+			 		notifsukses('Sukses','Data Telah Tersimpan..!!');
+			  		setTimeout('window.location.href=\"media.php?page=$page\"', 1000)
+			      </script>";
+			}else{
+			echo "<script>
+			      notiferror('Gagal','Data Gagal Tersimpan, pastikan data yang diinput telah benar ..!!');
+			  		setTimeout(function() { history.go(-1); }, 1000);
+			      </script>";
+			}
+		}
+	?>
+</div>
+</div>
+</div>
+<?php
+}elseif($_GET['act']=="edit"){
+$e = mysql_fetch_array(mysql_query("SELECT * FROM perbaikan WHERE pTiket='$_GET[id]'"));
+$tid = $e['pTiket'];
+?>
+<div class="widget-box">
+<div class="widget-header widget-header-flat"><h2 class="smaller">Edit</h2></div>
+<div class="widget-body">
+<div class="widget-main">
+	<!-- FORM -->
+	<form method="POST" enctype="multipart/form-data" class="form-horizontal">
+		<div class="control-group">
+			<label class="control-label" for="pTiket">ID Tiket</label>
+			<div class="controls">
+				<input type="text" class="input-medium" id="pTiket" name="pTiket" value="<?php echo $tid;?>" readonly required>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for="pTgl">Tanggal</label>
+			<div class="controls">
+				<div class="row-fluid input-append">
+					<input class="span2 date-picker" id="pTgl" name="pTgl" type="text" data-date-format="yyyy-mm-dd" value="<?php echo $e['pTgl'];?>" required/>
+					<span class="add-on"><i class="icon-calendar"></i></span>
+				</div>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for="pInv">Inventaris</label>
+			<div class="controls">
+				<select class="span4 chosen-select" name="pInv" id="pInv" placeholder="Pilih Inventaris">
+					<?php
+						$qsp = mysql_query("SELECT * FROM barang WHERE bkondisi='1' AND bkondisi='2' ");
+						while ($s=mysql_fetch_array($qsp)) {
+							$kat = getValue("kNama","ms_kategori","kId='$s[bjenis]'");
+	      					$merek = getValue("merek","ms_merek","rMerek='$s[bmerek]'");
+	      					$tipe = getValue("tipe","ms_tipe","rTipe='$s[btipe]'");
+	      					$kon = getValue("nama","_kondisi","id='$s[bkondisi]'");
+	      					$asal = getValue("jNama","_jpengadaan","jId='$s[basal]'");
+
+							if ($e['pInv']==$s['bInv']){
+								echo "<option value='$s[bkode]' selected>$s[bkode] - $kat - $merek - $tipe - sn: $s[serial]</option>";
+							}else{
+								echo "<option value='$s[bkode]'>$s[bkode] - $kat - $merek - $tipe - sn: $s[serial]</option>";
+							}
+						}
+					?>
+				</select>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for="pPJ">Penanggung Jawab</label>
+			<div class="controls">
+				<input class="input-xlarge" type="text" id="pPJ" name="pPJ" value="<?php echo $uname;?>" readonly required>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for="pKerusakan">Keluhan</label>
+			<div class="controls">
+				<textarea class="ckeditor" name="pKerusakan" id="pKerusakan" rows="8"><?php echo $e['pKerusakan'];?></textarea>
+			</div>
+		</div>
+		<div class="form-actions">
+			<button class="btn btn-info" type="submit" name="simpan">
+				<i class="icon-save bigger-110"></i>Simpan
+			</button>
+			<a class="btn" href="media.php?page=<?php echo $page;?>">
+				<i class="icon-undo bigger-110"></i>Batal
+			</a>
+		</div>
+	</form>
+	<!-- FORM -->
+	<?php
+		if (isset($_POST['simpan'])){
+			echo "$uname";
+			$q = mysql_query("UPDATE perbaikan SET pTgl='$_POST[pTgl]',
+	      												pKerusakan='$_POST[pKerusakan]',
+	      												pPJ='$uname',
+	      												onUpdate=NOW()
+	      											WHERE pTiket='$_POST[pTiket]'");	
+	      
+			if ($q){
+			echo "<script>
+			 		notifsukses('Sukses','Data Telah Tersimpan..!!');
+			  		setTimeout('window.location.href=\"media.php?page=$page\"', 1000)
+			      </script>";
+			}else{
+			echo "<script>
+			      notiferror('Gagal $uname','Data Gagal Tersimpan, pastikan data yang diinput telah benar ..!!');
+			  		setTimeout(function() { history.go(-1); }, 1000);
+			      </script>";
+			}
+		}
+	?>
+</div>
+</div>
+</div>
+<?php
+}elseif($_GET['act']=="selesai"){
+$e = mysql_fetch_array(mysql_query("SELECT a.*,b.pTglS,b.pKondisi,b.pKet FROM perbaikan a LEFT JOIN sperbaikan b ON a.pTiket=b.pTiket WHERE a.pTiket='$_GET[id]'"));
+$tid = $e['pTiket'];
+?>
+<div class="widget-box">
+<div class="widget-header widget-header-flat"><h2 class="smaller">Selesai</h2></div>
+<div class="widget-body">
+<div class="widget-main">
+	<!-- FORM -->
+	<form method="POST" enctype="multipart/form-data" class="form-horizontal">
+		<div class="control-group">
+			<label class="control-label" for="pTiket">ID Tiket</label>
+			<div class="controls">
+				<input type="text" class="input-medium" id="pTiket" name="pTiket" value="<?php echo $tid;?>" readonly required>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for="pTgl">Tanggal Perbaikan</label>
+			<div class="controls">
+				<div class="row-fluid input-append">
+					<input class="span2 date-picker" id="pTgl" name="pTgl" type="text" data-date-format="yyyy-mm-dd" value="<?php echo $e['pTgl'];?>" disabled required/>
+					<span class="add-on"><i class="icon-calendar"></i></span>
+				</div>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for="pInv">Inventaris</label>
+			<div class="controls">
+				<select class="span4 chosen-select" name="pInv" id="pInv" placeholder="Pilih Inventaris" disabled>
+					<?php
+						$qsp = mysql_query("SELECT * FROM barang");
+						while ($s=mysql_fetch_array($qsp)) {
+							if ($e['pInv']==$s['bkode']){
+								$jenis = getValue("kNama","ms_kategori","kId='$s[bjenis]'");
+	   							$nmerek = getValue("merek","ms_merek","rMerek='$s[bmerek]'");
+	   							$ntipe = getValue("tipe","ms_tipe","rTipe='$s[btipe]'");
+	   							$inv = getValue("pInv","perbaikan","pTiket='$tid'");
+	   							$serial = getValue("bserial","barang","bkode='$inv'");
+
+								echo "<option value='$s[bkode]' selected>$s[bkode] - $jenis - $nmerek - $ntipe sn: $serial</option>";
+							}else{
+								echo "<option value='$s[bkode]'>$s[bkode] - $jenis - $nmerek - $ntipe sn: $serial</option>";
+							}
+						}
+					?>
+				</select>
+				<input type="hidden" id="pInv" name="pInv" value="<?php echo $e[pInv];?>" >
+			</div>
+		</div>
+		<hr>
+		<h5 class="blue">Kondisi Setelah Perbaikan</h5>
+		<hr>
+		<div class="control-group">
+			<label class="control-label" for="pTglS">Tanggal Selesai</label>
+			<div class="controls">
+				<div class="row-fluid input-append">
+					<input class="span2 date-picker" id="pTglS" name="pTglS" type="text" data-date-format="yyyy-mm-dd" value="<?php echo $e['pTglS'];?>" required/>
+					<span class="add-on"><i class="icon-calendar"></i></span>
+				</div>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for="pKondisi">Kondisi</label>
+			<div class="controls"> 
+				<?php
+				$arKon = array('1'=>'Baik','2'=>'Rusak Ringan','3'=>'Rusak Berat');
+				foreach ($arKon as $k => $v) {
+					if ($k==$e['pKondisi']){
+						echo "<input name='pKondisi' type='radio' class='ace' value='$k' checked/><span class='lbl'> $v </span><br>";
+					}else{
+						echo "<input name='pKondisi' type='radio' class='ace' value='$k' /><span class='lbl'> $v </span><br>";
+					}
+				}
+				?>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for="pKet">Ket</label>
+			<div class="controls">
+				<textarea class="ckeditor" name="pKet" id="pKet" rows="8"><?php echo $e['pKet'];?></textarea>
+			</div>
+		</div>
+		<div class="form-actions">
+			<button class="btn btn-info" type="submit" name="simpan">
+				<i class="icon-save bigger-110"></i>Simpan
+			</button>
+			<a class="btn" href="media.php?page=<?php echo $page;?>">
+				<i class="icon-undo bigger-110"></i>Batal
+			</a>
+		</div>
+	</form>
+	<!-- FORM -->
+	<?php
+		if (isset($_POST['simpan'])){
+			
+			$qta = "INSERT INTO sperbaikan (pTiket,pTglS,pKondisi,pKet)
+										   VALUES ('$_POST[pTiket]','$_POST[pTglS]',
+													  '$_POST[pKondisi]','$_POST[pKet]')
+						ON DUPLICATE KEY UPDATE pTglS='$_POST[pTglS]',
+													  pKondisi='$_POST[pKondisi]',pKet='$_POST[pKet]'";
+			$q1 = mysql_query($qta);
+
+			if ($q1){
+				$q3 = mysql_query("UPDATE perbaikan SET pProses='0',pPJ='$uname' WHERE pTiket='$_POST[pTiket]'");
+				$q2 = mysql_query("UPDATE barang SET bkondisi='$_POST[pKondisi]' WHERE bkode='$_POST[pInv]'");
+
+    		    $milliseconds = round(microtime(true) * 1000);
+    			$pesan = "<div id='tipe'>selesaiperbaikan</div><div id='judul'>Perbaikan Telah Selesai</div><div id='isi'>$uname:\n$_POST[pKet]</div><div id='time'>$milliseconds</div>";
+    		    
+    		    $tokennya = array();
+    		    
+    			$q4 = mysql_query("select token from token t, perbaikan p where p.pTiket='$_POST[pTiket]' and p.user=t.uid ");
+    			while($hasil = mysql_fetch_array($q4)){
+        			$token = $hasil['token'];
+        			$tokennya[] = $token;
+                }
+        		send($tokennya, $pesan);
+
+			}
+
+	      
+			if ($q2&&$q3){
+			echo "<script>
+			 		notifsukses('Sukses','Data Telah Tersimpan..!!');
+			  		setTimeout('window.location.href=\"media.php?page=$page\"', 1000)
+			      </script>";
+			}else{
+			echo "<script>
+			      notiferror('Gagal','Data Gagal Tersimpan, pastikan data yang diinput telah benar ..!!');
+			  		setTimeout(function() { history.go(-1); }, 1000);
+			      </script>";
+			}
+		}
+	?>
+</div>
+</div>
+</div>
+<?php
+}else{
+?>
+	<a href="?page=<?php echo $page;?>&act=tambah" class="btn btn-primary">
+		<i class="icon-download-alt bigger-100"></i>Buka Tiket
+	</a><br><br>
+	<?php
+		if ($_GET['mode']=="hapus"){
+			$invx = getValue("pInv","perbaikan","pTiket='$_GET[id]'");
+			mysql_query("UPDATE barang SET bKondisi='1' WHERE bkode='$invx'");
+			mysql_query("DELETE FROM perbaikan WHERE pTiket='$_GET[id]'");
+	mysql_query("DELETE FROM sperbaikan WHERE pTiket='$_GET[id]'");
+	
+$idtiket = $_GET['id'];
+
+		$pesan = "<div id='tipe'>hapustiket</div><div id='idtiket'>$idtiket</div><div id='judul'></div><div id='isi'></div>";
+	    
+	    $tokennya = array();
+    	    
+    		$q4 = mysql_query("select token from token where level='0' and kdkab='$kd' ");
+    		while($hasil = mysql_fetch_array($q4)){
+    			$token = $hasil['token'];
+    			$tokennya[] = $token;
+            }
+    		
+		$q5 = mysql_query("select token from token t, perbaikan p where p.pTiket='$idtiket' and p.user=t.uid ");
+		while($hasil = mysql_fetch_array($q5)){
+			$token = $hasil['token'];
+			$tokennya[] = $token;
+        }
+		send($tokennya, $pesan);
+		
+			echo "<script>
+				 		notifsukses('Sukses','Data Telah Dihapus..!!');
+				  		setTimeout('window.location.href=\"media.php?page=$page\"', 1000)
+				   </script>";
+		}
+	$nmkab = strtoupper(getValue("nama_kabkot","kdkab","id_kabkot='$kd'"));
+	?>
+	<div class="table-header">
+	   DATA PERBAIKAN INVENTARIS IT BPS <?php echo "$nmkab"; ?>
+	</div>
+	<div class="row-fluid">
+	<table id="myTable" class="table table-striped table-bordered table-hover">
+	<thead>
+	    <tr>
+	    <th class="center" width="20px">No</th>
+	    <th class="center" width="40px">ID Tiket</th>
+	    <th class="center" width="180px">Inventaris</th>
+	    <th class="center" width="60px">Status</th>
+	    <th class="center" width="200px">Keluhan</th>
+	    <th class="center" width="200px">Pasca Perbaikan</th>
+	    <th class="center"width="60px">Report</th>
+	    <th class="center" width="50px">Aksi</th>
+	    </tr>
+	</thead>
+	<tbody>
+	<?php
+	if ($ulevel!='0') {
+	    $qry = mysql_query("SELECT a.*,b.pTglS,b.pKondisi,b.pKet FROM perbaikan a LEFT JOIN sperbaikan b ON a.pTiket=b.pTiket WHERE a.user='$uid' ORDER BY a.pTiket DESC");
+	} else {
+		$qry = mysql_query("SELECT a.*,b.pTglS,b.pKondisi,b.pKet FROM perbaikan a LEFT JOIN sperbaikan b ON a.pTiket=b.pTiket WHERE kdkab='$kd' ORDER BY a.pTiket DESC");
+	}
+		while ($d = mysql_fetch_array($qry)){
+	    $no++;
+	 
+
+	    $tglp = getTglIndo($d['pTgl']);
+      	$tgls = getTglIndo($d['pTglS']);
+      	$status = ($d['pProses']=="1" ? "<span class='badge badge-warning'>Proses</span>" : "<span class='badge badge-success'>Selesai</span>");
+      	$kondisi = ($d['pKondisi']=="1" ? "<span class='badge badge-success'>Baik</span>" : "<span class='badge badge-warning'>Rusak Ringan</span>");
+      	
+      	$pasca = "";
+      	if (!empty($d['pTglS'])){
+        	$pasca = "Lapor Tgl : $tgls<br>
+					  Kondisi   : $kondisi<br>
+					  Teknisi   : $d[pPJ]<br>
+				   	  Aksi      : <font color='green'><i>$d[pKet]</i></font>";
+		
+      	}
+      	
+      	$tiket=$d[pInv];
+        $kat = getValue("bjenis","barang","bkode='$d[pInv]'");
+	    $jenis = getValue("kNama","ms_kategori","kId='$kat'");
+	    $merek = getValue("bmerek","barang","bkode='$d[pInv]'");
+	    $nmerek = getValue("merek","ms_merek","rMerek='$merek'");
+	    $tipe = getValue("btipe","barang","bkode='$d[pInv]'");
+	    $ntipe = getValue("tipe","ms_tipe","rTipe='$tipe'");
+	    $serial = getValue("bserial","barang","bkode='$d[pInv]'");
+		$nama = getValue("uNama","user","uId='$d[user]'");
+		$ruang = getValue("pRuang","penempatan","pInv='$d[pInv]'");
+	    $nruang = getValue("rNama","ms_ruangan","rKode='$ruang'");
+	      echo "
+	      <tr>
+	      <td class='center'>$no</td>
+	      <td class='center'>$d[pTiket]</td>
+	      <td class='left'>
+	      	$d[pInv] <br>Ruang : [$ruang] $nruang<br><font color='blue'>$jenis - $nmerek - $ntipe <br> Serial : $serial</font>
+	      </td>
+	      <td class='center'>$status</td>
+	      <td class='left'>
+	      	Selesai Tgl : $tglp<br>
+	      	Pelapor     : $nama<br>
+      		Keluhan     : <font color='red'><i>$d[pKerusakan]</i></font>
+      	</td>
+      	<td class='left'>
+	      	$pasca
+      	</td>
+      	<td class='center'>";
+      		if (!empty($d['pTgl'])) {
+      				$print =
+      				"<form action='cetak/reportp.php?r=$d[pTiket]' method='POST' target='_blank'>
+		   	<button class='btn btn-primary btn-small' type='submit'>
+			<i class='icon-print bigger-100'></i> Cetak
+			</button>
+			</form>";
+      		}
+      		echo "
+      	    $print
+		    <td class='center'>
+		    <div class='inline position-relative'>";
+		      	if ($ulevel!='0') {
+		      		echo "       		
+                    <a href='?page=$page&act=edit&id=$d[pTiket]' class='tooltip-success' data-rel='tooltip' data-original-title='Edit'>
+                     	<span class='green'><i class='icon-edit bigger-120'></i></span>
+                    </a>
+                   	<a href='?page=$page&mode=hapus&id=$d[pTiket]' onclick='return qh();' class='tooltip-error' data-rel='tooltip' data-original-title='Delete'>
+                     	<span class='red'><i class='icon-trash bigger-120'></i></span>
+                    </a>";
+                } else {
+                    echo "
+                    <a href='?page=$page&act=selesai&id=$d[pTiket]' class='tooltip-success' data-rel='tooltip' data-original-title='Selesai Perbaikan'>
+                     	<span class='orange'><i class='icon-check bigger-120'></i></span>
+                    </a>
+                   	<a href='?page=$page&act=edit&id=$d[pTiket]' class='tooltip-success' data-rel='tooltip' data-original-title='Edit'>
+                     	<span class='green'><i class='icon-edit bigger-120'></i></span>
+                    </a>
+                    <a href='?page=$page&mode=hapus&id=$d[pTiket]' onclick='return qh();' class='tooltip-error' data-rel='tooltip' data-original-title='Delete'>
+                     	<span class='red'><i class='icon-trash bigger-120'></i></span>
+                    </a>";
+           		}
+           	echo "
+            </div>
+		    </td>";
+			
+	      ?>
+	     </tr>
+	    <?php
+	       }
+	    ?>
+	</tbody>
+	</table>
+	</div>
+<?php
+}
+?>
+</div>
+</div>
